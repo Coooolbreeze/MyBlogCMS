@@ -1,0 +1,83 @@
+<div class="layui-main" style="display:flex;justify-content:space-between;padding: 5px 0 0">
+  <div style="display:flex;justify-content:flex-start">
+    <button id="store" class="layui-btn">添加标签</button>
+  </div>
+  <div style="display:flex;justify-content:flex-end">
+    <!-- <select id="sort" style="margin-right: 10px">
+      <option value="">默认排序</option>
+      <option value="watch">浏览数量</option>
+      <option value="like">点赞数量</option>
+    </select>
+    <div style="display:flex;">
+      <input id="searchInput" type="text" class="layui-input">
+      <button id="search" class="layui-btn">搜索</button>
+    </div> -->
+  </div>
+</div>
+
+<div class="layui-main">
+  <table id="tagsTable" lay-filter="tagsTable"></table>
+</div>
+
+<script type="text/html" id="toolbar">
+  <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="delete">删除</a>
+</script>
+
+<script type="module">
+  import model from './models/model.js'
+  import util from './utils/util.js'
+
+  model.token.get() || (window.location.href = '/login.html')
+
+  layui.use(['table', 'form'], function () {
+    const table = layui.table
+    const form = layui.form
+
+    layer.load()
+    let tableIns = table.render({
+      id: 'tagsTable',
+      elem: '#tagsTable',
+      height: window.innerHeight - 170,
+      page: { hash: 'tags', curr: util.getHashPage('tags') },
+      loading: true,
+      url: model.baseRequestUrl + '/tags',
+      headers: { token: model.token.get() },
+      cols: [[
+        { field: 'id', title: 'ID', align: 'center' },
+        { field: 'name', title: '标签名', align: 'center', edit: true },
+        { field: 'posts_number', title: '文章数', align: 'center' },
+        { field: 'created_at', title: '创建时间', align: 'center' },
+        { title: '操作', align: 'center', toolbar: '#toolbar', fixed: 'right' }
+      ]],
+      done: _ => layer.closeAll('loading')
+    })
+
+    table.on('tool(tagsTable)', obj => {
+      let data = obj.data
+      obj.event === 'delete' &&
+        layer.confirm('确定删除该标签？', index => {
+          model.delTag(data.id).then(_ => obj.del())
+          layer.close(index)
+        })
+    })
+
+    table.on('edit(tagsTable)', obj => {
+      model.updateTag(obj.data.id, { [obj.field]: obj.value }).then(_ => {
+        tableIns.reload({ page: { hash: 'tags', curr: util.getHashPage('tags') } })
+        layer.msg('修改成功')
+      }).catch(_ => {
+        tableIns.reload({ page: { hash: 'tags', curr: util.getHashPage('tags') } })
+        layer.msg('修改失败')
+      })
+    })
+
+    $('#store').on('click', _ => {
+      layer.prompt({ title: '请输入标签名' }, (name, index) => {
+        model.storeTag({ name }).then(_ => {
+          tableIns.reload({ page: { hash: 'tags', curr: util.getHashPage('tags') } })
+          layer.close(index)
+        })
+      })
+    })
+  })
+</script>

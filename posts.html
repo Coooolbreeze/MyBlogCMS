@@ -1,0 +1,118 @@
+<div class="layui-main" style="display:flex;justify-content:space-between;padding: 5px 0 0">
+  <div style="display:flex;justify-content:flex-start">
+    <button id="store" class="layui-btn">发布文章</button>
+  </div>
+  <div style="display:flex;justify-content:flex-end">
+    <select id="sort" style="margin-right: 10px">
+      <option value="">默认排序</option>
+      <option value="watch">浏览数量</option>
+      <option value="like">点赞数量</option>
+    </select>
+    <div style="display:flex;">
+      <input id="searchInput" type="text" class="layui-input">
+      <button id="search" class="layui-btn">搜索</button>
+    </div>
+  </div>
+</div>
+
+<div class="layui-main">
+  <table id="postsTable" lay-filter="postsTable"></table>
+</div>
+
+<script type="text/html" id="toolbar">
+  <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="edit">编辑</a>
+  <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="delete">删除</a>
+</script>
+
+<script type="module">
+  model.token.get() || (window.location.href = '/login.html')
+
+  layui.use(['table', 'form'], function () {
+    const table = layui.table
+    const form = layui.form
+
+    let selectValue = {
+      sort: '',
+      title: ''
+    }
+
+    layer.load()
+    window.postsTable = table.render({
+      id: 'postsTable',
+      elem: '#postsTable',
+      height: window.innerHeight - 170,
+      page: { hash: 'posts', curr: util.getHashPage('posts') },
+      loading: true,
+      url: model.baseRequestUrl + '/posts',
+      headers: { token: model.token.get() },
+      where: selectValue,
+      cols: [[
+        { field: 'id', title: 'ID', align: 'center' },
+        { field: 'author', title: '作者', align: 'center', templet: '<div>{{d.author.nickname}}</div>' },
+        { field: 'title', title: '标题', align: 'center' },
+        { field: 'image', title: '图片', align: 'center', event: 'preImage', templet: '<div><img style="width:100%;height:100%;" src="{{d.image.src}}" /></div>' },
+        { field: 'outline', title: '摘要', align: 'center' },
+        { field: 'watch', title: '浏览', align: 'center' },
+        { field: 'like', title: '点赞', align: 'center' },
+        { field: 'dislike', title: '踩', align: 'center' },
+        { field: 'created_at', title: '创建时间', align: 'center' },
+        { field: 'updated_at', title: '更新时间', align: 'center' },
+        { title: '操作', align: 'center', toolbar: '#toolbar', fixed: 'right' }
+      ]],
+      done: _ => layer.closeAll('loading')
+    })
+
+    table.on('tool(postsTable)', obj => {
+      let data = obj.data
+
+      obj.event === 'delete' &&
+        layer.confirm('确定删除该文章？', index => {
+          model.delPost(data.id).then(_ => obj.del())
+          layer.close(index)
+        })
+
+      obj.event === 'edit' &&
+        layer.open({
+          type: 2,
+          area: ['70%', '100%'],
+          fixed: true,
+          maxmin: true,
+          content: `/post.html?id=${data.id}`
+        })
+
+      obj.event === 'preImage' &&
+        layer.photos({
+          photos: {
+            data: [{
+              alt: data.title,
+              src: data.image.src
+            }]
+          }
+        })
+    })
+
+    $('#store').on('click', _ => layer.open({
+      type: 2,
+      area: ['70%', '100%'],
+      fixed: true,
+      maxmin: true,
+      content: '/post.html'
+    }))
+
+    $('#sort').on('change', function () {
+      selectValue.sort = $(this).val()
+      layer.load()
+      postsTable.reload({ page: { hash: 'posts', curr: 1 } })
+      util.removeHash()
+    })
+
+    $('#search').on('click', function () {
+      selectValue.title = $('#searchInput').val()
+      layer.load()
+      postsTable.reload({ page: { hash: 'posts', curr: 1 } })
+      util.removeHash()
+    })
+
+    $('#searchInput').on('keyup', event => event.keyCode == 13 && $('#search').trigger('click'))
+  })
+</script>
